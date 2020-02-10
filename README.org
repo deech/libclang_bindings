@@ -1,0 +1,18 @@
+* libclang_bindings
+** Description
+   This package consists of raw [[https://nim-lang.org][Nim]] bindings to [[https://clang.llvm.org/docs/Tooling.html][LibClang]]. It completely covers
+   the [[https://clang.llvm.org/doxygen/group__CINDEX.html][C interface]] but provides nothing higher level, it is intended as a base
+   package on which to build more convenient abstractions.
+
+   It has been tested against the [[https://clang.llvm.org/docs/Tooling.html][LibClang]] bundled with [[https://clang.llvm.org/docs/Tooling.html][LLVM 9.0.0]], other versions may
+   or may not work.
+
+** Installation
+   This is a [[https://github.com/nim-lang/nimble][Nimble]] package but must be installed via Git, so first clone this
+   repo, then in the cloned directory do:
+   #+begin_example
+   > nimble install
+   #+end_example
+ 
+   If you need the Nim and Nimble toolchain [[https://github.com/dom96/choosenim][choosenim]] is the easiest way to get
+   started.
