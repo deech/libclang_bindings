@@ -1,0 +1,3 @@
+[submodule "nimscript_utils"]
+	path = nimscript_utils
+	url = https://github.com/deech/nimscript_utils

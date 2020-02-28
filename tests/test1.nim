@@ -12,3 +12,18 @@ test "can create index with some global options":
   check clang_CXIndex_getGlobalOptions(ip) == (cuint)bitor(ord CXGlobalOpt_ThreadBackgroundPriorityForAll,
                                                            bitor(ord CXGlobalOpt_ThreadBackgroundPriorityForIndexing,
                                                                  ord CXGlobalOpt_ThreadBackgroundPriorityForEditing))
+
+{.emit:""" /* INCLUDESECTION */
+#include "clang-c/Index.h"
+"""}
+
+{.emit:"""
+int majorVersion() { return CINDEX_VERSION_MAJOR; }
+int minorVersion() { return CINDEX_VERSION_MINOR; }
+"""}
+
+test "check ABI version":
+  proc majorVersion():cint {.importc.}
+  proc minorVersion():cint {.importc.}
+  check majorVersion() == 0
+  check minorVersion() == 59
