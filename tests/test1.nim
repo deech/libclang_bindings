@@ -1,9 +1,10 @@
 import unittest
 
-import libclang_bindings/index
-import bitops
+import libclangpkg/raw/index
+import libclangpkg/porcelain
+import bitops, options, os, system, tables, sugar, strformat
 
-test "can create index with some global options":
+test "can create index with some global options using raw calls":
   var ip = clang_createIndex(0,0)
   defer:
     clang_disposeIndex(ip)
@@ -27,3 +28,42 @@ test "check ABI version":
   proc minorVersion():cint {.importc.}
   check majorVersion() == 0
   check minorVersion() == 59
+
+test "can create index with some global options using the nicer API":
+  var ip = createIndex(false,false)
+  ip.globalOpts = @[
+    CXGlobalOpt_ThreadBackgroundPriorityForIndexing,
+    CXGlobalOpt_ThreadBackgroundPriorityForEditing
+  ]
+  check ip.globalOpts.len == 3
+  check CXGlobalOpt_ThreadBackgroundPriorityForIndexing in ip.globalOpts
+  check CXGlobalOpt_ThreadBackgroundPriorityForEditing in ip.globalOpts
+  # implied by the presense of the previous options
+  check CXGlobalOpt_ThreadBackgroundPriorityForAll in ip.globalOpts
+
+let enumHeader = absolutePath "tests/cpp/Enum.H"
+test "can parse an enum":
+  parseFile(
+    enumHeader,
+    (c:Cursor,_:Option[Cursor]) =>
+       (if c.kind == CXCursor_EnumConstantDecl:
+          echo fmt"{c.spelling} = {c.enumConstant}")
+  )
+
+  var idx = createIndex(false,false)
+  let tu = parseTranslationUnit(
+    i = idx,
+    sourceFileName = some enumHeader,
+    commandLineArguments = @[],
+    options = @[CXTranslationUnit_None]
+  )
+  check (isSome tu)
+  let cx = getCursor(tu.get)
+  check (isSome cx)
+  var enumTable = newTable[string,clonglong]()
+  proc visitor(c:Cursor,_:Option[Cursor]) =
+    if c.kind == CXCursor_EnumConstantDecl:
+      enumTable.add(c.spelling, clang_getEnumConstantDeclValue(c.cxCursor))
+  discard cx.get.visitChildren(visitor)
+  let expected : type(enumTable) = {"RED": 10.clonglong, "GREEN": 40.clonglong, "BLUE": 50.clonglong}.newTable
+  check expected == enumTable

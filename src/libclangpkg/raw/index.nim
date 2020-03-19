@@ -1,6 +1,6 @@
 import dll
 import std/time_t,bitops
-from system import csize_t
+import system
 import cxerrorcode
 import cxstring
 
@@ -15,18 +15,18 @@ type
 type
   CXIndex* = distinct pointer
     ## https://clang.llvm.org/doxygen/group__CINDEX.html#gae039c2574bfd75774ca7a9a3e55910cb
-  CXTargetInfo* {.importc.} = ptr object
+  CXTargetInfo* = ptr object
     ## https://clang.llvm.org/doxygen/group__CINDEX.html#ga6b47552ab8c5d81387070a9b197cd3e2
   CXTranslationUnit* = ptr object
     ## https://clang.llvm.org/doxygen/group__CINDEX.html#gacdb7815736ca709ce9a5e1ec2b7e16ac
-  CXClientData* = distinct pointer
+  CXClientData* = pointer
     ## https://clang.llvm.org/doxygen/group__CINDEX.html#gacfa40c3de26d228c0d898403c2c21612
   CXAvailabilityKind* = enum
     ## https://clang.llvm.org/doxygen/group__CINDEX.html#gada331ea0195e952c8f181ecf15e83d71
     CXAvailability_Available,
     CXAvailability_NotAvailable,
     CXAvailability_NotAccessible
-  CXVersion* {.final, .} = object
+  CXVersion* {.final.} = object
     ## https://clang.llvm.org/doxygen/structCXVersion.html
     Major*: cint
     Minor*: cint
@@ -49,7 +49,7 @@ type
     CXGlobalOpt_ThreadBackgroundPriorityForEditing = 0x2,
     CXGlobalOpt_ThreadBackgroundPriorityForAll = bitor(0x1,0x2)
       ## CXGlobalOpt_ThreadBackgroundPriorityForIndexing | CXGlobalOpt_ThreadBackgroundPriorityForEditing
-  CXFile* = distinct pointer
+  CXFile* = pointer
     ## https://clang.llvm.org/doxygen/group__CINDEX__FILES.html#gacfcea9c1239c916597e2e5b3e109215a
   CXFileUniqueID* = array[3,culonglong]
     ## https://clang.llvm.org/doxygen/structCXFileUniqueID.html
@@ -64,7 +64,7 @@ type
     end_int_data*: cuint
   CXSourceRangeList* {.final.} = object
     ## https://clang.llvm.org/doxygen/structCXSourceRangeList.html
-    ranges*: ptr CXSourceRange
+    ranges*: ptr UncheckedArray[CXSourceRange]
     count*: cuint
   CXDiagnosticSeverity* = enum
     ## https://clang.llvm.org/doxygen/group__CINDEX__DIAG.html#gabff210a02d448bf64e8aee79b2241370
@@ -417,7 +417,7 @@ type
     CXLanguage_C,
     CXLanguage_ObjC,
     CXLanguage_CPlusPlus
-  CXTLSKind = enum
+  CXTLSKind* = enum
     ## https://clang.llvm.org/doxygen/group__CINDEX__CURSOR__MANIP.html#ga4e9aabb46d683642ef49f542be4f1257
     CXTLS_None = 0,
     CXTLS_Dynamic,
@@ -619,7 +619,6 @@ type
     CXChildVisit_Break,
     CXChildVisit_Continue,
     CXChildVisit_Recurse
-  CXCursorVisitor* = proc (cursor: CXCursor,parent:CXCursor,client_data:CXClientData):CXChildVisitResult
   CXPrintingPolicy* = distinct pointer
   CXPrintingPolicyProperty* = enum
     ## https://clang.llvm.org/doxygen/group__CINDEX__CURSOR__XREF.html#gad5e7ef491a343f4cd8d8d7088c2c32ce
@@ -759,8 +758,6 @@ type
     CXCompletionContext_NaturalLanguage = rotateLeftBits((uint32)1,21),
     CXCompletionContext_IncludedFile = rotateLeftBits((uint32)1,22),
     CXCompletionContext_Unknown = rotateLeftBits((uint32)1,23) - 1
-  CXInclusionVisitor* = proc (included_file:CXFile, inclusion_stack:ptr CXSourceLocation, include_len:cuint, client_data:CXClientData)
-    ## https://clang.llvm.org/doxygen/group__CINDEX__MISC.html#ga075c50e5cf912f15d902cff864ea7d13
   CXEvalResultKind* = enum
     ## https://clang.llvm.org/doxygen/group__CINDEX__MISC.html#ga71ffcbb614704d05b059e7edce9465fe
     CXEval_UnExposed = 0,
@@ -991,9 +988,14 @@ type
     CXIndexOpt_IndexImplicitTemplateInstantiations = 0x4,
     CXIndexOpt_SuppressWarnings = 0x8,
     CXIndexOpt_SkipParsedBodiesInSession = 0x10
-  CXFieldVisitor* = proc (C:CXCursor, client_data:CXClientData):CXVisitorResult
-    ## https://clang.llvm.org/doxygen/group__CINDEX__HIGH.html#ga5040863c91d7a720a97569cf869f42a4
 {.pop.}
+type
+  CXCursorVisitor* = proc (cursor: CXCursor,parent:CXCursor,client_data:CXClientData):CXChildVisitResult {.cdecl.}
+  CXInclusionVisitor* = proc (included_file:CXFile, inclusion_stack:ptr CXSourceLocation, include_len:cuint, client_data:CXClientData) {.cdecl.}
+    ## https://clang.llvm.org/doxygen/group__CINDEX__MISC.html#ga075c50e5cf912f15d902cff864ea7d13
+  CXFieldVisitor* = proc (C:CXCursor, client_data:CXClientData):CXVisitorResult {.cdecl.}
+    ## https://clang.llvm.org/doxygen/group__CINDEX__HIGH.html#ga5040863c91d7a720a97569cf869f42a4
+
 
 const CXTUResourceUsage_MEMORY_IN_BYTES_BEGIN* = CXTUResourceUsage_AST
   ## https://clang.llvm.org/doxygen/group__CINDEX__TRANSLATION__UNIT.html#gga13810240df7c205de04daac58f956396a1ba688242079bafd247953f3b3196b77
@@ -1063,13 +1065,13 @@ proc clang_getFileName*(SFile: CXFile): CXString
   ## https://clang.llvm.org/doxygen/group__CINDEX__FILES.html#ga626ff6335ab1e0a2b8c8823301225690
 proc clang_getFileTime*(SFile: CXFile):Time
   ## https://clang.llvm.org/doxygen/group__CINDEX__FILES.html#gac8444d2892e0d24fcf71a9dea8a475cb
-proc clang_getFileUniqueID*(file:CXFile, outId: ptr CXFileUniqueID):cint
+proc clang_getFileUniqueID*(file:CXFile, outId: var CXFileUniqueID):cint
   ## https://clang.llvm.org/doxygen/group__CINDEX__FILES.html#gafeef0a8288de8c14e95e4d6c249aaf1e
 proc clang_isFileMultipleIncludeGuarded*(tu: CXTranslationUnit, file: CXFile):cuint
   ## https://clang.llvm.org/doxygen/group__CINDEX__FILES.html#ga1969fe907a40d9469ea68c370d0f602a
 proc clang_getFile*(tu: CXTranslationUnit, file_name: cstring): CXFile
   ## https://clang.llvm.org/doxygen/group__CINDEX__FILES.html#gaa0554e2ea48ecd217a29314d3cbd2085
-proc clang_getFileContents*(tu: CXTranslationUnit, file: CXFile, size: ptr csize_t):cstring
+proc clang_getFileContents*(tu: CXTranslationUnit, file: CXFile, size: var csize_t):cstring
   ## https://clang.llvm.org/doxygen/group__CINDEX__FILES.html#ga37a2396fb032f747f0b8101c7bfb9993
 proc clang_File_tryGetRealPathName*(file: CXFile): CXString
   ## https://clang.llvm.org/doxygen/group__CINDEX__FILES.html#ga5a6c556f77fd0b108e383a20dbf534ce
@@ -1093,15 +1095,15 @@ proc clang_equalRanges*(range1:CXSourceRange, range2:CXSourceRange):cuint
   ## https://clang.llvm.org/doxygen/group__CINDEX__LOCATIONS.html#ga07e10740b1e867fe4329c6a2df3f9be7
 proc clang_Range_isNull*(range: CXSourceRange):cint
   ## https://clang.llvm.org/doxygen/group__CINDEX__LOCATIONS.html#ga39213a93703e84c0accdba1f618d7fbb
-proc clang_getExpansionLocation*(location:CXSourceLocation, file: ptr CXFile, line: ptr cuint, column: ptr cuint, offset: ptr cuint)
+proc clang_getExpansionLocation*(location:CXSourceLocation, file: var CXFile, line: var cuint, column: var cuint, offset: var cuint)
   ## https://clang.llvm.org/doxygen/group__CINDEX__LOCATIONS.html#gadee4bea0fa34550663e869f48550eb1f
-proc clang_getPresumedLocation*(location: CXSourceLocation, filename: ptr CXString, line: ptr cuint, column: ptr cuint)
+proc clang_getPresumedLocation*(location: CXSourceLocation, filename: var CXString, line: var cuint, column: var cuint)
   ## https://clang.llvm.org/doxygen/group__CINDEX__LOCATIONS.html#ga03508d9c944feeb3877515a1b08d36f9
-proc clang_getInstantiationLocation*(location:CXSourceLocation, file: ptr CXFile, line: ptr cuint, column: ptr cuint, offset: ptr cuint)
+proc clang_getInstantiationLocation*(location:CXSourceLocation, file: var CXFile, line: var cuint, column: var cuint, offset: var cuint)
   ## https://clang.llvm.org/doxygen/group__CINDEX__LOCATIONS.html#ga112e657eb04c281ca12c6975d489b633
-proc clang_getSpellingLocation*(location:CXSourceLocation, file: ptr CXFile, line: ptr cuint, column: ptr cuint, offset: ptr cuint)
+proc clang_getSpellingLocation*(location:CXSourceLocation, file: var CXFile, line: var cuint, column: var cuint, offset: var cuint)
   ## https://clang.llvm.org/doxygen/group__CINDEX__LOCATIONS.html#ga01f1a342f7807ea742aedd2c61c46fa0
-proc clang_getFileLocation*(location:CXSourceLocation, file: ptr CXFile, line: ptr cuint, column: ptr cuint, offset: ptr cuint)
+proc clang_getFileLocation*(location:CXSourceLocation, file: var CXFile, line: var cuint, column: var cuint, offset: var cuint)
   ## https://clang.llvm.org/doxygen/group__CINDEX__LOCATIONS.html#gae0ee9ff0ea04f2446832fc12a7fd2ac8
 proc clang_getRangeStart*(range:CXSourceRange):CXSourceLocation
   ## https://clang.llvm.org/doxygen/group__CINDEX__LOCATIONS.html#gac2cc034e3965739c41662f6ada7ff248
@@ -1141,7 +1143,7 @@ proc clang_getDiagnosticLocation*(diagnostic: CXDiagnostic): CXSourceLocation
   ## https://clang.llvm.org/doxygen/group__CINDEX__DIAG.html#gabfcf70ac15bb3e5ae39ef2c5e07c7428
 proc clang_getDiagnosticSpelling*(diagnostic: CXDiagnostic): CXString
   ## https://clang.llvm.org/doxygen/group__CINDEX__DIAG.html#ga34a875e6d06ed4f8d2fc032f850ebbe1
-proc clang_getDiagnosticOption*(Diag: CXDiagnostic, Disable: ptr CXString):CXString
+proc clang_getDiagnosticOption*(Diag: CXDiagnostic, Disable: var CXString):CXString
   ## https://clang.llvm.org/doxygen/group__CINDEX__DIAG.html#ga69b094e2cca1cd6f452327dc9204a168
 proc clang_getDiagnosticCategory*(diag: CXDiagnostic):cuint
   ## https://clang.llvm.org/doxygen/group__CINDEX__DIAG.html#ga0ec085bd59b8b6c935eab0e53a1f348f
@@ -1155,7 +1157,7 @@ proc clang_getDiagnosticRange*(Diagnostic: CXDiagnostic, Range: cuint): CXSource
   ## https://clang.llvm.org/doxygen/group__CINDEX__DIAG.html#gabd440f1577374289ffebe73d9f65b294
 proc clang_getDiagnosticNumFixIts*(Diagnostic: CXDiagnostic):cuint
   ## https://clang.llvm.org/doxygen/group__CINDEX__DIAG.html#gafe38dfd661f6ba59df956dfeabece2a2
-proc clang_getDiagnosticFixIt*(Diagnostic: CXDiagnostic, FixIt: cuint, ReplacementRange: ptr CXSourceRange): CXString
+proc clang_getDiagnosticFixIt*(Diagnostic: CXDiagnostic, FixIt: cuint, ReplacementRange: var CXSourceRange): CXString
   ## https://clang.llvm.org/doxygen/group__CINDEX__DIAG.html#gadf990bd68112475c5c07b19c1fe3938a
 proc clang_getTranslationUnitSpelling*(CTUnit: CXTranslationUnit): CXString
   ## https://clang.llvm.org/doxygen/group__CINDEX__TRANSLATION__UNIT.html#ga7fb521c65f3aeb15b977d910098ceb0d
@@ -1182,12 +1184,12 @@ proc clang_parseTranslationUnit*(CIdx: CXIndex,
   ## https://clang.llvm.org/doxygen/group__CINDEX__TRANSLATION__UNIT.html#ga2baf83f8c3299788234c8bce55e4472e
 proc clang_parseTranslationUnit2*(CIdx: CXIndex,
                                   source_filename: cstring,
-                                  command_line_args:ptr cstring,
+                                  command_line_args:cstringArray,
                                   num_command_line_args:cint ,
                                   unsaved_files: ptr CXUnsavedFile,
                                   num_unsaved_files:cuint,
                                   options:cuint,
-                                  out_TU: ptr CXTranslationUnit): CXErrorCode
+                                  out_TU: var CXTranslationUnit): CXErrorCode
   ## https://clang.llvm.org/doxygen/group__CINDEX__TRANSLATION__UNIT.html#ga494de0e725c5ae40cbdea5fa6081027d
 proc clang_parseTranslationUnit2FullArgv*(CIdx: CXIndex,
                                           source_filename: cstring,
@@ -1267,13 +1269,13 @@ proc clang_getCursorVisibility*(cursor:CXCursor):CXVisibilityKind
   ## https://clang.llvm.org/doxygen/group__CINDEX__CURSOR__MANIP.html#ga935b442bd6bde168cf354b7629b471d8
 proc clang_getCursorAvailability*(cursor:CXCursor):CXAvailabilityKind
   ## https://clang.llvm.org/doxygen/group__CINDEX__CURSOR__MANIP.html#gab44e2a565fa40a0e0fc0f130f618a9b5
-proc clang_getCursorPlatformAvailability*(cursor:CXCursor,
-                                         always_deprecated:ptr cint,
-                                         deprecated_message: ptr CXString,
-                                         always_unavailable:ptr cint,
-                                         unavailable_message: ptr CXString,
-                                         availability:ptr CXPlatformAvailability,
-                                         availability_size:cint):cuint
+proc clang_getCursorPlatformAvailability*(cursor: CXCursor,
+                                          always_deprecated: var cint,
+                                          deprecated_message: var CXString,
+                                          always_unavailable: var cint,
+                                          unavailable_message: var CXString,
+                                          availability:ptr UncheckedArray[CXPlatformAvailability],
+                                          availability_size:cint):cuint
   ## https://clang.llvm.org/doxygen/group__CINDEX__CURSOR__MANIP.html#gaab07659398c4538771d62c81ca5dea69
 proc clang_disposeCXPlatformAvailability*(availability: ptr CXPlatformAvailability)
   ## https://clang.llvm.org/doxygen/group__CINDEX__CURSOR__MANIP.html#ga1acfac399add40f7240e02f9f5f1a6d9
@@ -1295,7 +1297,7 @@ proc clang_getCursorSemanticParent*(cursor: CXCursor):CXCursor
   ## https://clang.llvm.org/doxygen/group__CINDEX__CURSOR__MANIP.html#gabc327b200d46781cf30cb84d4af3c877
 proc clang_getCursorLexicalParent*(cursor: CXCursor):CXCursor
   ## https://clang.llvm.org/doxygen/group__CINDEX__CURSOR__MANIP.html#gace7a423874d72b3fdc71d6b0f31830dd
-proc clang_getOverriddenCursors*(cursor: CXCursor, overridden: ptr ptr CXCursor, num_overridden: ptr cuint)
+proc clang_getOverriddenCursors*(cursor: CXCursor, overridden: ptr UncheckedArray[CXCursor], num_overridden: var cuint)
   ## https://clang.llvm.org/doxygen/group__CINDEX__CURSOR__MANIP.html#gac308b03420c550e00c61153dc63deac8
 proc clang_disposeOverriddenCursors*(overridden: ptr CXCursor)
   ## https://clang.llvm.org/doxygen/group__CINDEX__CURSOR__MANIP.html#gac8f259af871b3f34ca7150703f8aaaa8
