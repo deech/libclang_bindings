@@ -12,8 +12,11 @@ requires "nimscript_utils >= 0.1.0"
 import "libclangpkg/bundle.nims"
 
 task getLibclang, "":
-  mkdir nimCacheDir()
-  let (clangArchive, unarchivedDir) = getLibclang(nimCacheDir())
-  cpLibsAndHeaders(nimCacheDir(), unarchivedDir)
-  rmFile clangArchive
-  rmDir unarchivedDir
+  bundleLibclang()
+  echo getEnv("C_INCLUDE_PATH")
+
+task sandboxedTest, "Download libclang to a sandbox and run tests with that":
+  bundleLibclang()
+  echo getEnv("C_INCLUDE_PATH")
+  echo getEnv("LD_LIBRARY_PATH")
+  echo staticExec("nimble test")
