@@ -1,2 +1,4 @@
 /src/libclangpkg/raw/index
 /tests/test1
+/libclang.dylib
+/tests/libclang.dylib

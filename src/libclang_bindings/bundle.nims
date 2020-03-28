@@ -109,8 +109,14 @@ proc bundleLibclang*() =
     pushEnv(e, includePath(nimCacheDir()))
   when defined(windows):
     pushEnv("PATH", libraryPath(nimCacheDir()))
-  elif defined(macos):
+  elif defined(macosx):
     for e in @["LIBRARY_PATH", "DYLD_LIBRARY_PATH"]:
-      pushEnv(e,libraryPath)
+      pushEnv(e,libraryPath(nimCacheDir()))
   else:
     pushEnv("LD_LIBRARY_PATH", libraryPath(nimCacheDir()))
+
+proc macosxTestWorkaround*(projectDir: string) =
+  cpFile(
+    libraryPath(nimCacheDir()) / DLL,
+    projectDir / DLL
+  )
