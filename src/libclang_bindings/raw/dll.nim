@@ -1,7 +1,9 @@
 const DLL* =
-  when defined(linux):
-    "libclang.so"
+  when defined(macosx):
+    "libclang.dylib"
   elif defined(windows):
     "libclang.dll"
-  elif defined(macos):
-    "libclang.dylib"
+  elif defined(posix):
+    "libclang.so"
+  else:
+    {.error: "These bindings are not supported on your platform".}
