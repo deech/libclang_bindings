@@ -1,7 +1,7 @@
 import unittest
 
-import libclangpkg/raw/index
-import libclangpkg/porcelain
+import libclang_bindings/raw/index
+import libclang_bindings/porcelain
 import bitops, options, os, system, tables, sugar, strformat
 
 test "can create index with some global options using raw calls":
