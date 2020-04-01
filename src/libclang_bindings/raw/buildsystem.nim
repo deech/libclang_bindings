@@ -7,9 +7,7 @@ type
     ## https://clang.llvm.org/doxygen/group__BUILD__SYSTEM.html#ga8d7eea7855a8d1118218c7661469b3db
   CXModuleMapDescriptor* = distinct pointer
     ## https://clang.llvm.org/doxygen/group__BUILD__SYSTEM.html#gae854e36ceb0a02071e557e19f908772d
-{.pop.}
 
-{.push importc, dynlib: DLL .}
 proc clang_VirtualFileOverlay_create*(options: int):CXVirtualFileOverlay
   ## https://clang.llvm.org/doxygen/group__BUILD__SYSTEM.html#gac0fc5753287609c4087155c3bab1ba1b
 proc clang_VirtualFileOverlay_addFileMapping*(overlay: CXVirtualFileOverlay, virtualPath: cstring, realPath: cstring): CXErrorCode

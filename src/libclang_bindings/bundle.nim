@@ -1,6 +1,8 @@
-import "nimscript_utils/downloader.nims"
-import "nimscript_utils/extract.nims"
-import "nimscript_utils/env.nims"
+import nimscript_utils/downloader
+import nimscript_utils/extract
+import nimscript_utils/env
+import nimscript_utils/cmake
+import nimscript_utils/programs
 import raw/dll
 import distros, strutils, strformat, options, system, tables, os
 
@@ -19,22 +21,55 @@ let genericLinux* = "Ubuntu-19.04"
 let libclangDir* = "libclang-9.0.0"
 let libclangInclude* = "include" / "clang-c"
 let libclangLib* = "lib"
-let libclangDynamicLibs* = @[
-  "libclang.so",
-  "libclang.so.9"
-]
 
-let libclangStaticLibs* = @[
-  "libclangAST.a",
-  "libclangBasic.a",
-  "libclangDriver.a",
-  "libclangFrontend.a",
-  "libclangIndex.a",
-  "libclangLex.a",
-  "libclangSema.a",
-  "libclangSerialization.a",
-  "libclangTooling.a"
-]
+when defined(posix):
+  let sourceDownloads* =
+    {
+      "llvm" : "https://releases.llvm.org/9.0.0/llvm-9.0.0.src.tar.xz",
+      "clang" : "https://releases.llvm.org/9.0.0/cfe-9.0.0.src.tar.xz"
+    }.toTable
+
+  proc downloadSources*(dir: string, proxy: Option[Proxy] = none[Proxy]()) =
+    echo dir
+    if not (system.existsDir (dir / "third-party")): mkDir(dir / "third-party")
+    proc downloadExtract(key:string) =
+      let extractDir = sourceDownloads[key].splitFile.name.splitFile.name
+      let downloadFile = sourceDownloads[key].splitFile.name
+      if not (system.existsDir (dir / "third-party" / extractDir)):
+        download(Config(
+          url: sourceDownloads[key],
+          proxy: proxy,
+          outfile : dir / "third-party" / downloadFile,
+          overwrite : true
+        ))
+        discard extractTarxz(
+          dir / "third-party" / downloadFile,
+          dir / "third-party" / extractDir
+        )
+    downloadExtract("llvm")
+    downloadExtract("clang")
+
+  proc buildFromSource*(proxy: Option[Proxy] = none[Proxy]()) =
+    if missingPrograms(@["cmake"]).contains("cmake"):
+      raise newException(Defect, "Could not find 'cmake' which is required to build LLVM and libclang from source.")
+    let dir = getTempDir()
+    downloadSources(dir, proxy)
+    let installDir = dir / "third-party" / libclangDir
+    let libclangFlags = @[
+      fmt"-DCMAKE_INSTALL_PREFIX={installDir}",
+      fmt"-DCMAKE_PREFIX_PATH={installDir}",
+      "-DCMAKE_BUILD_TYPE=Release",
+      "-DLIBCLANG_BUILD_STATIC=ON"
+    ]
+    let llvmFlags = libclangFlags & @["-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=\"AVR\"",  "-DLLVM_ENABLE_LIBXML2=OFF"]
+    proc buildIt(key:string,flags:seq[string]) =
+      runCmake(
+        sourceDownloads[key].splitFile.name.splitFile.name,
+        flags
+      )
+    buildIt("llvm",llvmFlags)
+    pushEnv("PATH",installDir / "bin")
+    buildIt("libclang",libclangFlags)
 
 proc downloadLink*():string =
   if defined(windows):
@@ -75,13 +110,13 @@ proc getLibclang*(outDir: string, proxy : Option[Proxy] = none[Proxy]()): (strin
     if link == "":
       raise newException(Defect, "No prebuilt libclang release found for your operating system.")
     else:
-      if not system.fileExists(outDir / outFile):
-        echo fmt"Downloading from {link}. It's 380MB so it will take a while ..."
-        download(Config(url: link, proxy: proxy, outfile: outDir / outfile, overwrite: true))
+      if not (system.dirExists clangDir):
+        if not (system.fileExists outDir / outFile):
+          echo fmt"Downloading from {link}. It's 380MB so it will take a while ..."
+          download(Config(url: link, proxy: proxy, outfile: outDir / outfile, overwrite: true))
       echo fmt"Extracting {outfile} to {clangDir}"
-      discard extractTarxz(outDir / outfile, outDir)
+      echo extractTarxz(outDir / outfile, outDir)
   return (outDir / outfile, clangDir)
-
 
 proc cpLibsAndHeaders*(cache, libclangUnarchivedDir: string) =
   mkDir includePath(cache)
@@ -95,10 +130,11 @@ proc cpLibsAndHeaders*(cache, libclangUnarchivedDir: string) =
     libclangUnarchivedDir / "lib",
     libraryPath(cache)
   )
-  cpFile(
-    libclangUnarchivedDir / "lib" / DLL,
-    libraryPath(cache) / DLL
-  )
+  for l in libclangDynamicLibs:
+    cpFile(
+     libclangUnarchivedDir / "lib" / l,
+     libraryPath(cache) / l
+    )
 
 proc bundleLibclang*() =
   mkdir nimCacheDir()
@@ -113,10 +149,12 @@ proc bundleLibclang*() =
     for e in @["LIBRARY_PATH", "DYLD_LIBRARY_PATH"]:
       pushEnv(e,libraryPath(nimCacheDir()))
   else:
-    pushEnv("LD_LIBRARY_PATH", libraryPath(nimCacheDir()))
+    for e in @["LIBRARY_PATH", "LD_LIBRARY_PATH"]:
+      pushEnv(e, libraryPath(nimCacheDir()))
 
 proc macosxTestWorkaround*(projectDir: string) =
-  cpFile(
-    libraryPath(nimCacheDir()) / DLL,
-    projectDir / DLL
-  )
+  for l in libclangDynamicLibs:
+    cpFile(
+     libraryPath(nimCacheDir()) / l,
+     projectDir / l
+    )

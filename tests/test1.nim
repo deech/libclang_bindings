@@ -4,6 +4,8 @@ import libclang_bindings/raw/index
 import libclang_bindings/porcelain
 import bitops, options, os, system, tables, sugar, strformat
 
+{.passL: "-lclang".}
+
 test "can create index with some global options using raw calls":
   var ip = clang_createIndex(0,0)
   defer:

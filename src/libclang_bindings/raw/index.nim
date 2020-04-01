@@ -1,4 +1,3 @@
-import dll
 import std/time_t,bitops
 import system
 import cxerrorcode
@@ -1050,7 +1049,7 @@ const CXCallingConv_X86_64Win64* = CXCallingConv_Win64
 const CXPrintingPolicy_LastProperty* = CXPrintingPolicy_FullyQualifiedName
   ## https://clang.llvm.org/doxygen/group__CINDEX__CURSOR__XREF.html#ggad5e7ef491a343f4cd8d8d7088c2c32cea47577b503a3d75d1a81f71e00f5c2e97
 
-{.push importc, dynlib:DLL.}
+{.push importc, header: "clang-c/Index.h".}
 proc clang_createIndex*(excludeDeclarationsFromPCH, displayDiagnostics: cint): CXIndex
   ## https://clang.llvm.org/doxygen/group__CINDEX.html#ga51eb9b38c18743bf2d824c6230e61f93
 proc clang_disposeIndex*(index: CXIndex)

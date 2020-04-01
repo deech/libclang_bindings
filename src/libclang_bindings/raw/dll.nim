@@ -1,9 +1,4 @@
-const DLL* =
-  when defined(macosx):
-    "libclang.dylib"
-  elif defined(windows):
-    "libclang.dll"
-  elif defined(posix):
-    "libclang.so"
-  else:
-    {.error: "These bindings are not supported on your platform".}
+let libclangDynamicLibs* {.compileTime.} =
+  when defined(macosx): @["libclang.dylib"]
+  elif defined(posix): @["libclang.so", "libclang.so.9"]
+  else: @[]
