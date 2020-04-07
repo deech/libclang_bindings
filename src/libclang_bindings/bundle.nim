@@ -34,17 +34,19 @@ when defined(posix):
     if not (system.existsDir (dir / "third-party")): mkDir(dir / "third-party")
     proc downloadExtract(key:string) =
       let extractDir = sourceDownloads[key].splitFile.name.splitFile.name
-      let downloadFile = sourceDownloads[key].splitFile.name
+      let downloadFile = sourceDownloads[key].extractFilename
       if not (system.existsDir (dir / "third-party" / extractDir)):
+        echo(dir / "third-party" / downloadFile)
+        echo(dir / "third-party" / extractDir)
         download(Config(
           url: sourceDownloads[key],
           proxy: proxy,
           outfile : dir / "third-party" / downloadFile,
           overwrite : true
         ))
-        discard extractTarxz(
+        echo extractTarxz(
           dir / "third-party" / downloadFile,
-          dir / "third-party" / extractDir
+          dir / "third-party"
         )
     downloadExtract("llvm")
     downloadExtract("clang")
@@ -64,12 +66,12 @@ when defined(posix):
     let llvmFlags = libclangFlags & @["-DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD=\"AVR\"",  "-DLLVM_ENABLE_LIBXML2=OFF"]
     proc buildIt(key:string,flags:seq[string]) =
       runCmake(
-        sourceDownloads[key].splitFile.name.splitFile.name,
+        dir / "third-party" / sourceDownloads[key].splitFile.name.splitFile.name,
         flags
       )
     buildIt("llvm",llvmFlags)
     pushEnv("PATH",installDir / "bin")
-    buildIt("libclang",libclangFlags)
+    buildIt("clang",libclangFlags)
 
 proc downloadLink*():string =
   if defined(windows):

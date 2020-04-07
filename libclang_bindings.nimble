@@ -16,3 +16,6 @@ task sandboxedTest, "Download libclang to a sandbox and use it to run tests":
   when defined(macosx):
     macosxTestWorkaround(projectDir())
   echo staticExec(""" nimble test --passNim:\"-d:foobar\"  """)
+
+task staticBuild, "":
+  buildFromSource()
