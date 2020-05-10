@@ -2,3 +2,5 @@
 /tests/test1
 /libclang.dylib
 /tests/libclang.dylib
+/src/libclang_bindings/nimscript_utils/
+/libclang_nim_bundler/
