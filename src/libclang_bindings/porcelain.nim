@@ -442,7 +442,9 @@ proc getOverriddenCursors*(c: Cursor):seq[Cursor] =
   clang_getOverriddenCursors(c.cxCursor,cursorPtrs,numCursors)
   if numCursors != 0:
     for i in 0 ..< numCursors:
-      fillOutCursor(cursorPtrs[i]).map(proc (c:Cursor) = result.add c)
+      let cursorO = fillOutCursor(cursorPtrs[i])
+      if (isSome cursorO):
+        result.add cursorO.get
 proc visitChildren*(cursor:Cursor, f: proc (cursor:Cursor,parent:Option[Cursor])):bool =
   proc makeVisitor(cursor,parent:CXCursor):CXChildVisitResult =
     result = CXChildVisit_Recurse

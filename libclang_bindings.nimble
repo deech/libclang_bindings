@@ -7,7 +7,7 @@ license       = "MIT"
 srcDir        = "src"
 backend       = "c"
 
-requires "nim >= 1.1.1"
+requires "nim >= 1.3.3"
 import os
 
 let libclangBindingsSrc = getCurrentDir() / "src" / "libclang_bindings"
