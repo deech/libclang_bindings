@@ -2,9 +2,32 @@ import unittest
 
 import libclang_bindings/raw/index
 import libclang_bindings/porcelain
-import bitops, options, os, system, tables, sugar, strformat
+import bitops, options, os, system, tables
 
-{.passL: "-lclang".}
+
+const SandboxIncludeFlags {.strdefine.} = ""
+const SandboxLibDir {.strdefine.} = ""
+when defined(sandboxStatic):
+  if (not SandboxIncludeFlags.len == 0):
+    {.passC: "-I" & SandboxIncludeFlags}
+  if (not SandboxLibDir.len == 0):
+    {.passL: "-L" & SandboxLibDir}
+  when defined(macosx):
+    {.passL: "-lclang_static_bundled -lstdc++ -lm -ldl -lpthread -lz".}
+  else:
+    {.passL: "-lclang_static_bundled -lstdc++ -lm -ldl -lpthread".}
+elif defined(sandbox):
+  if (not SandboxIncludeFlags.len == 0):
+    {.passC: "-I" & SandboxIncludeFlags}
+  if (not SandboxLibDir.len == 0):
+    {.passL: "-L" & SandboxLibDir}
+  when defined(macosx):
+    {.passL: "-lclang -lz3 -lstdc++ -ldl -lpthread".}
+  elif defined(linux):
+    {.passL: "-lclang -lstdc++ -lm -ldl -lpthread -Wl,-rpath=" & SandboxLibDir.}
+else:
+  {.passL: "-lclang".}
+
 
 test "can create index with some global options using raw calls":
   var ip = clang_createIndex(0,0)
@@ -45,13 +68,6 @@ test "can create index with some global options using the nicer API":
 
 let enumHeader = absolutePath "tests/cpp/Enum.H"
 test "can parse an enum":
-  parseFile(
-    enumHeader,
-    (c:Cursor,_:Option[Cursor]) =>
-       (if c.kind == CXCursor_EnumConstantDecl:
-          echo fmt"{c.spelling} = {c.enumConstant}")
-  )
-
   var idx = createIndex(false,false)
   let tu = parseTranslationUnit(
     i = idx,
