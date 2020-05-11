@@ -20,24 +20,16 @@ proc cloneIfNeeded(root: string, repoDir: string, url: string) =
     withDir root:
       exec("git clone --depth 1 " & url)
 
-cloneIfNeeded(getCurrentDir(), "libclang_nim_bundler", bundlerGit)
-cloneIfNeeded(getCurrentDir() / "libclang_nim_bundler", "nimscript_utils", nimscript_utilsGit)
-
-import libclang_nim_bundler/bundle
-import strutils
 import strformat
 
 let test = getCurrentDir() / "tests" / "test1"
 
 task test, "Run tests against a shared libclang":
-  bundle.build()
-  exec(fmt"nim c -d:sandbox -d:sandboxIncludeFlags={bundle.includePath} -d:sandboxLibDir={bundle.libraryPath} {test}")
-  when defined(macosx):
-    bundle.macosLibZ3Adjustment test
-  exec(test)
-  rmFile test
+  cloneIfNeeded(getCurrentDir(), "libclang_nim_bundler", bundlerGit)
+  cloneIfNeeded(getCurrentDir() / "libclang_nim_bundler", "nimscript_utils", nimscript_utilsGit)
+  exec(fmt"nim e testBuilder.nims shared {test}")
 
 task testStatic, "Run tests against static libclang":
-  bundle.build()
-  exec(fmt"nim c -d:sandboxStatic -d:sandboxIncludeFlags={bundle.includePath} -d:sandboxLibDir={bundle.libraryPath} -r {test}")
-  rmFile test
+  cloneIfNeeded(getCurrentDir(), "libclang_nim_bundler", bundlerGit)
+  cloneIfNeeded(getCurrentDir() / "libclang_nim_bundler", "nimscript_utils", nimscript_utilsGit)
+  exec(fmt"nim e testBuilder.nims static {test}")
