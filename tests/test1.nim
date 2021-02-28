@@ -13,9 +13,9 @@ when defined(sandboxStatic):
   if (not SandboxLibDir.len == 0):
     {.passL: "-L" & SandboxLibDir}
   when defined(macosx):
-    {.passL: "-lclang_static_bundled -lstdc++ -lm -ldl -lpthread -lz".}
+    {.passL: "-lclang_bundled -lstdc++ -lm -ldl -lpthread -lz".}
   else:
-    {.passL: "-lclang_static_bundled -lstdc++ -lm -ldl -lpthread".}
+    {.passL: "-lclang_bundled -lstdc++ -lm -ldl -lpthread".}
 elif defined(sandbox):
   if (not SandboxIncludeFlags.len == 0):
     {.passC: "-I" & SandboxIncludeFlags}
